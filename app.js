@@ -78,7 +78,6 @@ function setup(shaders)
     gl.clearColor(0, 0, 0, 1.0);
     CYLINDER.init(gl);
     CUBE.init(gl);
-
     TORUS.init(gl);
     BUNNY.init(gl);
     gl.enable(gl.DEPTH_TEST);   // Enables Z-buffer depth test
@@ -217,8 +216,8 @@ function setup(shaders)
 
     function setupMaterialsFolder()
     {
-        let KaRGB = [150,150,150];
-        let KdRGB = [150,150,150];
+        let KaRGB = [17,3,3];
+        let KdRGB = [17,3,3];
         let KsRGB = [200,200,200];
         let shininessValue = 100;
         materialsController = {Ka: KaRGB, Kd: KdRGB, Ks: KsRGB, shininess: shininessValue};
@@ -238,42 +237,60 @@ function setup(shaders)
 
     // BASIC OBJECTS ________________________________________________________
 
-    function Cube(color)
+    function defineMaterialProperties(materialAmb, materialDif, materialSpe, shininess)
+    {
+        const uMaterialAmb = gl.getUniformLocation(program, "materialAmb");
+        const uMaterialDif = gl.getUniformLocation(program, "materialDif");
+        const uMaterialSpe = gl.getUniformLocation(program, "materialSpe");
+        const uShininess = gl.getUniformLocation(program, "shininess");
+
+        gl.uniform3fv(uMaterialAmb, materialAmb);
+        gl.uniform3fv(uMaterialDif, materialDif);
+        gl.uniform3fv(uMaterialSpe, materialSpe);
+        gl.uniform1f(uShininess, shininess);
+    }
+
+    function Ground()
     {
         uploadMatrixes();
         
-        const uColor = gl.getUniformLocation(program, "uColor");
-        gl.uniform3fv(uColor, color);
+        defineMaterialProperties([0.9,0.5,0.4],[0.9,0.5,0.4],[1,1,1], 20);
 
         CUBE.draw(gl, program, mode);
     }
 
-    function Cylinder(color)
+    function Cube()
     {
         uploadMatrixes();
         
-        const uColor = gl.getUniformLocation(program, "uColor");
-        gl.uniform3fv(uColor, color);
+        defineMaterialProperties([0.7,0.2,0.2],[0.7,0.2,0.2],[1,1,1], 5);
+
+        CUBE.draw(gl, program, mode);
+    }
+
+    function Cylinder()
+    {
+        uploadMatrixes();
+        
+        defineMaterialProperties([0.3,0.6,0.3],[0.3,0.6,0.3],[1,1,1], 5);
 
         CYLINDER.draw(gl, program, mode);
     }
 
-    function Torus(color)
+    function Torus()
     {
         uploadMatrixes();
         
-        const uColor = gl.getUniformLocation(program, "uColor");
-        gl.uniform3fv(uColor, color);
+        defineMaterialProperties([0.4,0.85,0.4],[0.4,0.85,0.4],[1,1,1], 5);
 
         TORUS.draw(gl, program, mode);
     }
 
-    function Bunny(color)
+    function Bunny()
     {
         uploadMatrixes();
         
-        const uColor = gl.getUniformLocation(program, "uColor");
-        gl.uniform3fv(uColor, color);
+        defineMaterialProperties(materialsController.Ka, materialsController.Kd, materialsController.Ks, materialsController.shininess);
 
         BUNNY.draw(gl, program, mode);
     }
@@ -285,24 +302,24 @@ function setup(shaders)
         pushMatrix();
             multTranslation([0, -0.25, 0]);
             multScale([10, 0.5, 10]);
-            Cube([0.9,0.5,0.4]);
+            Ground();
         popMatrix();
         pushMatrix();
             multTranslation([2.5, 0, 2.5]);
             multScale([10,10,10]);
-            Bunny([0.9, 0.7, 0.7]);
+            Bunny();
         popMatrix();
         pushMatrix();
             multTranslation([2.5,0.5,-2.5]);
-            Cylinder([0.3, 0.6, 0.3]);
+            Cylinder();
         popMatrix();
         pushMatrix();
             multTranslation([-2.5,0.5,-2.5]);
-            Cube([0.7,0.2,0.2]);
+            Cube();
         popMatrix();
             multTranslation([-2.5,0.235,2.5]);
             multScale([1.3,1.2,1.3]);
-            Torus([0.4,0.85,0.4]);
+            Torus();
     }
 
     //___________________________________________________________________________________
