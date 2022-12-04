@@ -12,7 +12,6 @@ let gl;
 
 let mode;               // Drawing mode (gl.LINES or gl.TRIANGLES)
 
-let projectionState = 1;
 let mProjection;
 let mView;
 
@@ -47,7 +46,7 @@ function setup(shaders)
 
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
 
-    mProjection = perspective(45, aspect, VP_DISTANCE, 3 * VP_DISTANCE);
+    mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);
 
     mode = gl.TRIANGLES; 
 
@@ -57,18 +56,6 @@ function setup(shaders)
     document.onkeydown = function(event) 
     {
         switch(event.key) {
-            case '1':
-                projectionState = 1;
-                break;
-            case '2':
-                projectionState = 2;
-                break;
-            case '3':
-                projectionState = 3;
-                break;
-            case '4':
-                projectionState = 4;
-                break;
             case 'l':
                 addLight();
                 break;
@@ -92,7 +79,7 @@ function setup(shaders)
         aspect = canvas.width / canvas.height;
 
         gl.viewport(0,0,canvas.width, canvas.height);
-        mProjection = perspective(45, aspect, VP_DISTANCE, 3 * VP_DISTANCE);
+        mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);
     }
 
     function uploadModelView()
@@ -153,15 +140,15 @@ function setup(shaders)
 
     function setupProjectionFolder()
     {
-        projectionController = {fovy: 45, near: 0.1, far: 40};
-        projectionFolder.add(projectionController, "fovy", 1, 90, 1);
+        projectionController = {fovy: 45, near: 10, far: 40};
+        projectionFolder.add(projectionController, "fovy", 1, 180, 1);
         projectionFolder.add(projectionController, "near", 0.1, 40, 0.1);
         projectionFolder.add(projectionController, "far", 0.1, 40, 0.1);
     }
 
     function setupCameraFolder()
     {
-        let eyeXYZ = {x: 0, y: 0, z: -10};
+        let eyeXYZ = {x: 0, y: VP_DISTANCE, z: VP_DISTANCE};
         let atXYZ = {x: 0, y: 0, z: 0};
         let upXYZ = {x: 0, y: 1, z: 0};
         cameraController = {eye: eyeXYZ, at: atXYZ, up: upXYZ}; 
@@ -239,10 +226,10 @@ function setup(shaders)
 
     function defineMaterialProperties(materialAmb, materialDif, materialSpe, shininess)
     {
-        const uMaterialAmb = gl.getUniformLocation(program, "materialAmb");
-        const uMaterialDif = gl.getUniformLocation(program, "materialDif");
-        const uMaterialSpe = gl.getUniformLocation(program, "materialSpe");
-        const uShininess = gl.getUniformLocation(program, "shininess");
+        const uMaterialAmb = gl.getUniformLocation(program, "uMaterial.Ka");
+        const uMaterialDif = gl.getUniformLocation(program, "uMaterial.Kd");
+        const uMaterialSpe = gl.getUniformLocation(program, "uMaterial.Ks");
+        const uShininess = gl.getUniformLocation(program, "uMaterial.shininess");
 
         gl.uniform3fv(uMaterialAmb, materialAmb);
         gl.uniform3fv(uMaterialDif, materialDif);
@@ -252,46 +239,36 @@ function setup(shaders)
 
     function Ground()
     {
-        uploadMatrixes();
-        
-        defineMaterialProperties([0.9,0.5,0.4],[0.9,0.5,0.4],[1,1,1], 20);
-
+        uploadMatrixes();  
+        defineMaterialProperties([1,0.5,0.5],[1,0.5,0.5],[1,1,1], 20);
         CUBE.draw(gl, program, mode);
     }
 
     function Cube()
     {
         uploadMatrixes();
-        
         defineMaterialProperties([0.7,0.2,0.2],[0.7,0.2,0.2],[1,1,1], 5);
-
         CUBE.draw(gl, program, mode);
     }
 
     function Cylinder()
     {
         uploadMatrixes();
-        
         defineMaterialProperties([0.3,0.6,0.3],[0.3,0.6,0.3],[1,1,1], 5);
-
         CYLINDER.draw(gl, program, mode);
     }
 
     function Torus()
     {
         uploadMatrixes();
-        
         defineMaterialProperties([0.4,0.85,0.4],[0.4,0.85,0.4],[1,1,1], 5);
-
         TORUS.draw(gl, program, mode);
     }
 
     function Bunny()
     {
         uploadMatrixes();
-        
         defineMaterialProperties(materialsController.Ka, materialsController.Kd, materialsController.Ks, materialsController.shininess);
-
         BUNNY.draw(gl, program, mode);
     }
 
@@ -334,34 +311,28 @@ function setup(shaders)
         
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection));
 
-        enactProjection();
+        enactView();
 
         FullScene();
     }
 
     // AUXILIARY FUNCTIONS __________________________________________________________
-    function enactProjection()
+    function enactView()
     {
-        switch(projectionState){
-            case 1:
-                mView = lookAt([-VP_DISTANCE, VP_DISTANCE, VP_DISTANCE], [0, 0, 0], [0, 1, 0]);          
-                break;
-            case 2:
-                mView = frontView();
-                break;
-            case 3:
-                mView = mult(frontView(), rotateX(90));
-                break;
-            case 4:
-                mView = mult(frontView(), rotateY(-90));
-                break;
-        }
+        let eye = makeAttributeArray(cameraController.eye);
+        let at = makeAttributeArray(cameraController.at);
+        let up = makeAttributeArray(cameraController.up);
+        mView = lookAt(eye, at, up);    
+        mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);    
         loadMatrix(mView);
     }
 
-    function frontView()
+    function makeAttributeArray(obj)
     {
-        return lookAt([0,0,VP_DISTANCE],[0,0,0],[0,1,0]);
+        const array = [];
+        for (const a in obj)
+            array.push(obj[a]);
+        return array;
     }
 }
 const urls = ["shader.vert", "shader.frag"];
