@@ -1,5 +1,5 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import { ortho, lookAt, flatten, inverse, mult, rotateX, rotateY, perspective} from "../../libs/MV.js";
+import { ortho, lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose} from "../../libs/MV.js";
 import {modelView, loadMatrix, multRotationX, multRotationY, multRotationZ, multScale, pushMatrix, popMatrix, multTranslation } from "../../libs/stack.js";
 import { GUI } from "../../libs/dat.gui.module.js";
 import * as CYLINDER from '../../libs/objects/cylinder.js';
@@ -16,7 +16,7 @@ let projectionState = 1;
 let mProjection;
 let mView;
 
-const VP_DISTANCE = 5;
+const VP_DISTANCE = 10;
 const MAX_LIGHTS = 8;
 
 let gui = new GUI();
@@ -47,7 +47,7 @@ function setup(shaders)
 
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
 
-    mProjection = perspective(45, aspect, -3*VP_DISTANCE, 3*VP_DISTANCE);
+    mProjection = perspective(45, aspect, VP_DISTANCE, 3 * VP_DISTANCE);
 
     mode = gl.TRIANGLES; 
 
@@ -75,7 +75,7 @@ function setup(shaders)
         }
     }
 
-    gl.clearColor(0.3, 1, 1, 1.0);
+    gl.clearColor(0, 0, 0, 1.0);
     CYLINDER.init(gl);
     CUBE.init(gl);
 
@@ -93,12 +93,40 @@ function setup(shaders)
         aspect = canvas.width / canvas.height;
 
         gl.viewport(0,0,canvas.width, canvas.height);
-        mProjection = ortho(-VP_DISTANCE*aspect,VP_DISTANCE*aspect, -VP_DISTANCE, VP_DISTANCE,-3*VP_DISTANCE,3*VP_DISTANCE);
+        mProjection = perspective(45, aspect, VP_DISTANCE, 3 * VP_DISTANCE);
     }
 
     function uploadModelView()
     {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mModelView"), false, flatten(modelView()));
+    }
+
+    function upload_mNormals()
+    {
+        const location = gl.getUniformLocation(program, "mNormals");
+        let uMNormals = inverse(transpose(modelView()));
+        gl.uniformMatrix4fv(location, false, flatten(uMNormals));
+    }
+
+    function upload_mViewNormals()
+    {
+        const location = gl.getUniformLocation(program, "mViewNormals");
+        let uMViewNormals = inverse(transpose(mView));
+        gl.uniformMatrix4fv(location, false, flatten(uMViewNormals));
+    }
+
+    function upload_mView()
+    {
+        const location = gl.getUniformLocation(program, "mView");
+        gl.uniformMatrix4fv(location, false, flatten(mView));
+    }
+
+    function uploadMatrixes()
+    {
+        uploadModelView();
+        upload_mNormals();
+        upload_mViewNormals();
+        upload_mView();
     }
 
     function setupGUI()
@@ -212,7 +240,7 @@ function setup(shaders)
 
     function Cube(color)
     {
-        uploadModelView();
+        uploadMatrixes();
         
         const uColor = gl.getUniformLocation(program, "uColor");
         gl.uniform3fv(uColor, color);
@@ -220,19 +248,9 @@ function setup(shaders)
         CUBE.draw(gl, program, mode);
     }
 
-    function Pyramid(color)
-    {
-        uploadModelView();
-        
-        const uColor = gl.getUniformLocation(program, "uColor");
-        gl.uniform3fv(uColor, color);
-
-        PYRAMID.draw(gl, program, mode);
-    }
-
     function Cylinder(color)
     {
-        uploadModelView();
+        uploadMatrixes();
         
         const uColor = gl.getUniformLocation(program, "uColor");
         gl.uniform3fv(uColor, color);
@@ -240,19 +258,9 @@ function setup(shaders)
         CYLINDER.draw(gl, program, mode);
     }
 
-    function Sphere(color)
-    {
-        uploadModelView();
-
-        const uColor = gl.getUniformLocation(program, "uColor");
-        gl.uniform3fv(uColor, color);
-
-        SPHERE.draw(gl, program, mode);
-    }
-
     function Torus(color)
     {
-        uploadModelView();
+        uploadMatrixes();
         
         const uColor = gl.getUniformLocation(program, "uColor");
         gl.uniform3fv(uColor, color);
@@ -262,7 +270,7 @@ function setup(shaders)
 
     function Bunny(color)
     {
-        uploadModelView();
+        uploadMatrixes();
         
         const uColor = gl.getUniformLocation(program, "uColor");
         gl.uniform3fv(uColor, color);
