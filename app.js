@@ -1,35 +1,40 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import { ortho, lookAt, flatten, inverse, mult, rotateX, rotateY, rotateZ} from "../../libs/MV.js";
+import { ortho, lookAt, flatten, inverse, mult, rotateX, rotateY, perspective} from "../../libs/MV.js";
 import {modelView, loadMatrix, multRotationX, multRotationY, multRotationZ, multScale, pushMatrix, popMatrix, multTranslation } from "../../libs/stack.js";
-
-import * as SPHERE from '../../libs/objects/sphere.js';
+import { GUI } from "../../libs/dat.gui.module.js";
 import * as CYLINDER from '../../libs/objects/cylinder.js';
 import * as CUBE from '../../libs/objects/cube.js';
-import * as PYRAMID from '../../libs/objects/pyramid.js';
 import * as TORUS from '../../libs/objects/torus.js';
+import * as BUNNY from '../../libs/objects/bunny.js';
 
 /** @type WebGLRenderingContext */
 let gl;
 
 let mode;               // Drawing mode (gl.LINES or gl.TRIANGLES)
 
-let time = 0;
 let projectionState = 1;
+let mProjection;
 let mView;
-let heli = {ascension: 1, acceleration: 0, trajectory: 0, inclination: 0, bladeVelocity: 0};
-let heliPos;
-let boxes = [];
-let isSpeedingUp = false;
-let thetaSlider = document.getElementById("theta");
-let gammaSlider = document.getElementById("gamma");
 
-const MAX_HEIGHT = 28;
-const SAFE_HEIGHT = 5;
-const MAX_INCLINATION = 30;
-const MIN_INCLINATION = 0;
-const MAX_ACCELERATION = 1;
-const MIN_ACCELERATION = 0;
-const VP_DISTANCE = 40;
+const VP_DISTANCE = 5;
+const MAX_LIGHTS = 8;
+
+let gui = new GUI();
+
+let optionsFolder;
+let projectionFolder;
+let cameraFolder;
+let lightsFolder;
+let materialsFolder;
+
+let optionController;
+let projectionController;
+let cameraController;
+let lightsController;
+let materialsController;
+
+let lights = [];
+
 
 function setup(shaders)
 {
@@ -38,9 +43,11 @@ function setup(shaders)
 
     gl = setupWebGL(canvas);
 
+    setupGUI();
+
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
 
-    let mProjection = ortho(-VP_DISTANCE*aspect,VP_DISTANCE*aspect, -VP_DISTANCE, VP_DISTANCE,-3*VP_DISTANCE,3*VP_DISTANCE);
+    mProjection = perspective(45, aspect, -3*VP_DISTANCE, 3*VP_DISTANCE);
 
     mode = gl.TRIANGLES; 
 
@@ -50,26 +57,6 @@ function setup(shaders)
     document.onkeydown = function(event) 
     {
         switch(event.key) {
-            case 'w':
-                mode = gl.LINES; 
-                break;
-            case 's':
-                mode = gl.TRIANGLES;
-                break;
-            case 'ArrowUp':
-                if(heli.ascension < MAX_HEIGHT)
-                    heli.ascension += 0.2;
-                break;
-            case 'ArrowDown':
-                descend();
-                liftOff();
-                break;
-            case 'ArrowLeft':
-                increaseSpeed();
-                break;
-            case ' ':
-                drop();
-                break;
             case '1':
                 projectionState = 1;
                 break;
@@ -82,24 +69,18 @@ function setup(shaders)
             case '4':
                 projectionState = 4;
                 break;
-            case '5':
-                projectionState = 5;
+            case 'l':
+                addLight();
                 break;
         }
     }
 
-    document.onkeyup = function(event) 
-    {
-        if(event.key == 'ArrowLeft')
-            isSpeedingUp = false;
-    }
-
     gl.clearColor(0.3, 1, 1, 1.0);
-    SPHERE.init(gl);
     CYLINDER.init(gl);
     CUBE.init(gl);
-    PYRAMID.init(gl);
-    TORUS.init(gl,100,100,0.5,0.2);
+
+    TORUS.init(gl);
+    BUNNY.init(gl);
     gl.enable(gl.DEPTH_TEST);   // Enables Z-buffer depth test
     
     window.requestAnimationFrame(render);
@@ -118,6 +99,113 @@ function setup(shaders)
     function uploadModelView()
     {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mModelView"), false, flatten(modelView()));
+    }
+
+    function setupGUI()
+    {
+        optionsFolder = gui.addFolder("Options");
+        projectionFolder = gui.addFolder("Perspective");
+        cameraFolder = gui.addFolder("Camera");
+        lightsFolder = gui.addFolder("Lights");
+        materialsFolder = gui.addFolder("Materials");
+
+        setupOptionsFolder();
+        setupProjectionFolder();
+        setupCameraFolder();
+        setupLightsFolder();
+        setupMaterialsFolder();
+    }
+
+    function setupOptionsFolder()
+    {
+        optionController = {culling: true, zb: true};
+
+        optionsFolder.add(optionController, "culling").name("Backface culling");
+        optionsFolder.add(optionController, "zb").name("Depth test");
+    }
+
+    function setupProjectionFolder()
+    {
+        projectionController = {fovy: 45, near: 0.1, far: 40};
+        projectionFolder.add(projectionController, "fovy", 1, 90, 1);
+        projectionFolder.add(projectionController, "near", 0.1, 40, 0.1);
+        projectionFolder.add(projectionController, "far", 0.1, 40, 0.1);
+    }
+
+    function setupCameraFolder()
+    {
+        let eyeXYZ = {x: 0, y: 0, z: -10};
+        let atXYZ = {x: 0, y: 0, z: 0};
+        let upXYZ = {x: 0, y: 1, z: 0};
+        cameraController = {eye: eyeXYZ, at: atXYZ, up: upXYZ}; 
+
+        let eyeFolder = cameraFolder.addFolder("eye");
+        let atFolder = cameraFolder.addFolder("at");
+        let upFolder = cameraFolder.addFolder("up");
+
+        setupXYZ(eyeFolder, eyeXYZ);
+        setupXYZ(atFolder, atXYZ);
+        setupXYZ(upFolder, upXYZ);
+    }
+
+    function setupLightsFolder()
+    {
+
+    }
+
+    function addLight(){
+        let light = new Light();
+        lights.push(light);
+        createLightFolder(light);
+    }
+
+    function Light(){
+        this.position = {x: 0, y: 0, z: 0, w: 1};
+        this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
+        this.axis = {x: 0, y: 0, z: -1};
+        this.aperture = 10;
+        this.cutoff = 10;
+    }
+
+    function createLightFolder(light){
+        const lightName = "Light " + lights.length;
+        let lightFolder = lightsFolder.addFolder(lightName);
+        let positionFolder = lightFolder.addFolder("position");
+        let intensitiesFolder = lightFolder.addFolder("intensities");
+        let axisFolder = lightFolder.addFolder("axis");
+
+        setupXYZ(positionFolder, light.position);
+        positionFolder.add(light.position, "w");
+
+        intensitiesFolder.addColor(light.intensities, "ambient");
+        intensitiesFolder.addColor(light.intensities, "diffuse");
+        intensitiesFolder.addColor(light.intensities, "specular");
+
+        setupXYZ(axisFolder, light.axis);
+
+        lightFolder.add(light, "aperture", 0, 360, 1);
+        lightFolder.add(light, "cutoff", 0, 100, 1);
+    }
+
+    function setupMaterialsFolder()
+    {
+        let KaRGB = [150,150,150];
+        let KdRGB = [150,150,150];
+        let KsRGB = [200,200,200];
+        let shininessValue = 100;
+        materialsController = {Ka: KaRGB, Kd: KdRGB, Ks: KsRGB, shininess: shininessValue};
+
+        materialsFolder.addColor(materialsController, "Ka");
+        materialsFolder.addColor(materialsController, "Kd");
+        materialsFolder.addColor(materialsController, "Ks");
+        materialsFolder.add(materialsController, "shininess");
+    }
+
+    function setupXYZ(folder, controller)
+    {
+        folder.add(controller, "x");
+        folder.add(controller, "y");
+        folder.add(controller, "z");
     }
 
     // BASIC OBJECTS ________________________________________________________
@@ -172,354 +260,14 @@ function setup(shaders)
         TORUS.draw(gl, program, mode);
     }
 
-    // heli ___________________________________________________________
-
-    function RotorBlade()
+    function Bunny(color)
     {
-        multScale([1.5, 0.1, 0.2]);
-        Sphere([1.0, 1.0, 1.0]);
-    }
-
-    function RotorPivot()
-    {
-        multScale([0.1, 0.4, 0.1]);
-        Cylinder([0.5, 0.5, 0.5]);
-    }
-
-    function Rotor()
-    {
-        pushMatrix();
-            RotorPivot();
-        popMatrix();
-        pushMatrix();
-            multTranslation([-0.75, 0, 0]);
-            RotorBlade();
-        popMatrix();
-            multTranslation([0.75, 0, 0]);
-            RotorBlade();
-    }
-
-    function SmallRotor()
-    {
-        multRotationX(90);
-        multRotationY(-heli.bladeVelocity);
-        multScale([0.7,0.7,0.7]);
-        Rotor();
-    }
-
-    function LargeRotor()
-    {
-        multRotationY(heli.bladeVelocity);
-        multScale([1.5,1.5,1.5]);
-        Rotor();
-    }
-
-    function SpiderLeg(translation, rotation)
-    {
-        pushMatrix();
-            multTranslation(translation);
-            multRotationY(rotation);
-            pushMatrix();
-                multRotationZ(120);
-                multScale([0.1, 1.5, 0.1]);
-                Pyramid([0.1, 0.2, 0.8]);
-            popMatrix();
-                multTranslation([0.9,-0.28,0]);
-                multRotationZ(-160);
-                multScale([0.1, 1.5, 0.1]);
-                Pyramid([0.1, 0.2, 0.8]);
-        popMatrix();
-    }
-
-    function Legs()
-    {
-        SpiderLeg([-0.8,0,-0.7], 150);
-        SpiderLeg([-0.8,0,0.7], -150);
-        SpiderLeg([-0.3,0,-0.9], 120);
-        SpiderLeg([-0.3,0,0.9], -120);
-        SpiderLeg([0.3,0,-0.9], 80);
-        SpiderLeg([0.3,0,0.9], -80);
-        SpiderLeg([0.8,0,-0.7], 40);
-        SpiderLeg([0.8,0,0.7], -40);
-    }
-
-    function TailConnector()
-    {
-        multScale([2.4, 0.3, 0.3]);
-        Sphere([1, 0.2, 0.3]);
-    }
-
-    function TailEnd()
-    {
-        multTranslation([1.1,0.3,0]);
-        multScale([0.35, 0.7, 0.2]);
-        pushMatrix();
-            Sphere([1, 0.2, 0.3]);
-        popMatrix();
-            multTranslation([0,0,0.6]);
-            SmallRotor();
-    }
-
-    function Tail()
-    {
-        pushMatrix();
-            TailConnector();
-        popMatrix();
-            TailEnd();
-    }
-
-    function Cabin()
-    {
-        multScale([2.6, 1.5, 1.5]);
-        Sphere([1, 0.2, 0.3]);
-    }
-
-    function MainBody()
-    {
-        pushMatrix();
-            Cabin();
-        popMatrix();
-        pushMatrix();
-            Legs();
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,1,0]);
-            LargeRotor();
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,1.3,0]);
-            multRotationY(90);
-            LargeRotor();
-        popMatrix();
-            multTranslation([1.8,0.2,0]);
-            Tail();
-    }
-
-    function Helicopter()
-    {
-        multRotationY(heli.trajectory);
-        multTranslation([0,heli.ascension,-30]); 
-        //detalhinho extra
-        multRotationX(heli.inclination);
-        multRotationZ(heli.inclination);
-        //------------------------------------
-        const mModel = mult(inverse(mView), modelView());
-        heliPos = mult(mModel, [0,0,0,1]); 
-        //------------------------------------
-        MainBody();
-    }
-
-        // BOXES _________________________________________________________________
-    
-        function drop()
-        {
-          //  worldPos = mult(inverse(mView), mult(modelView(), heliPos));
-            let box = {pos: heliPos.slice(0,3), timeOfCreation: time};
-            boxes.push(box);
-        }
+        uploadModelView();
         
-        function Box(box)
-        {
-            multTranslation(box.pos);  
-            multScale([0.8, 0.8, 0.8]);    
-            Cube([1,1,1]);
-        } 
-    
-        function Boxes()
-        {
-            for(let i = 0; i < boxes.length; i++){
-                const box = boxes[i];
-                    const age = time - boxes[i].timeOfCreation;
-                    if(box.pos[1] - 3 * age > 0.5)
-                        box.pos[1] -= 3 * age;
-                    else
-                        box.pos[1] = 0.5;
-                pushMatrix();
-                    Box(box);
-                popMatrix();
-            }
-        }
-        
-    // CITY ___________________________________________________________________
+        const uColor = gl.getUniformLocation(program, "uColor");
+        gl.uniform3fv(uColor, color);
 
-    function Ground()
-    {
-        multScale([75.0, 0.2,75.0]);
-        Cube([0.1,0.5,0.4]);
-    }
-
-    function Window()
-    {
-        multScale([5.05, 1.2, 1.2]);
-        Cube([1,1,0.3]);
-    }
-
-    function BuildingBlock(color)
-    {
-        pushMatrix();
-            multScale([5,5,5]);
-            Cube(color);
-        popMatrix();
-        const bottomLeft = - 1.4;
-        for(let i = 0; i < 3; i++)
-            for(let j = 0; j < 3; j++){
-                let vertical = bottomLeft + j * 1.4;
-                let horizontal = bottomLeft+ i * 1.4;
-                pushMatrix();
-                    multTranslation([0,vertical,horizontal]);
-                    Window();
-                popMatrix();
-                pushMatrix();
-                    multRotationY(90);
-                    multTranslation([0,vertical,horizontal]);
-                    Window();
-                popMatrix();
-            }
-    }
-
-    function SmallBuilding()
-    {
-        multScale([1.5,2,1.5]);
-        BuildingBlock([0.65,0.65,0.65]);
-        multTranslation([0,3,0]);
-        multScale([5,1,5]);
-        Pyramid([0.7,0.1,0.1]);    
-    }
-
-    function TripletBuilding()
-    {
-        pushMatrix();
-            multScale([1.5,2,1.5]);
-            BuildingBlock([0.8,0.8,0.8]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,8.4,0])
-            multScale([1.5,2,1.5]);
-            BuildingBlock([0.8,0.8,0.8]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,0,-7.5]);
-            SmallBuilding();
-        popMatrix();
-            multTranslation([7.5,0,0]);
-            SmallBuilding();
-    }
-
-    function Skyscraper()
-    {
-        pushMatrix();
-            multScale([1.5,2.5,1.5]);
-            BuildingBlock([0.5,0.5,0.5]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,10,0]);
-            multScale([1,2,1]);
-            BuildingBlock([0.6,0.6,0.6]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,17,0]);
-            multScale([3,5,3]);
-            Cube([0.27,0.24,0.5]);
-            multRotationY(45);
-            Cube([0.27,0.24,0.5]);
-        popMatrix();
-            multTranslation([0,20.5,0]);
-            multScale([1,2,1]);
-            Pyramid([1,0,0]);
-    }
-
-    function LuxuryBuilding()
-    {
-        pushMatrix();
-            multScale([3,3,3]);
-            BuildingBlock([0.5,0.7,0.7]);
-            multRotationY(45);
-            BuildingBlock([0.5,0.7,0.7]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,6,0]);
-            multScale([15,7.5,15]);
-            Sphere([0.8,0.8,0.8]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,16,0]);
-            multScale([0.5,15,0.5]);
-            Cylinder([0.2,0.2,0.3]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,15,0]);
-            multScale([7,3.5,7]);
-            Torus([0.3,0.3,0.3]);
-        popMatrix();
-        pushMatrix();
-            multTranslation([0,18,0]);
-            multScale([5,2,5]);
-            Torus([0.6,0.6,0.6]);
-        popMatrix();
-            multTranslation([0,21,0]);
-            multScale([3,1.2,3]);
-            Torus([1,1,1]);
-    }
-
-    function Buildings()
-    {
-        pushMatrix();
-            multTranslation([-32,5,32]);
-            TripletBuilding();
-        popMatrix();
-        pushMatrix();
-            multTranslation([25,6.3,-30]);
-            multRotationY(55);
-            Skyscraper();
-        popMatrix();
-        multTranslation([0,7.5,0]);
-        LuxuryBuilding();
-    }
-
-    function Tree(translation)
-    {
-        pushMatrix();
-            multTranslation(translation);
-            pushMatrix();
-                multTranslation([0,2.7,0]);
-                multScale([3,3.5,3]);
-                Pyramid([0,0.4,0]);
-                multRotationY(45);
-                Pyramid([0,0.5,0]);
-            popMatrix();
-            multScale([0.5,2,0.5]);
-            Cube([0.3,0.2,0]);
-        popMatrix();
-    }
-
-    function Trees()
-    {
-        Tree([-33,1,-33]);
-        Tree([-29,1,-30]);
-        Tree([-32,1,-22]);
-        Tree([30,1,33]);
-        Tree([27,1,25]);
-        Tree([22,1,29]);
-        Tree([33,1,15]);
-    }
-
-    function River()
-    {
-        multRotationY(40);
-        multScale([30,0.6,35]);
-        Torus([0.3,0.8,0.9]);
-    }
-
-    function City()
-    {
-        pushMatrix();
-            Ground();
-        popMatrix();
-        pushMatrix();
-            Buildings();
-        popMatrix();
-        Trees();
-        River();
+        BUNNY.draw(gl, program, mode);
     }
 
     // FULL SCENE ______________________________________________________________
@@ -527,30 +275,33 @@ function setup(shaders)
     function FullScene()
     { 
         pushMatrix();
-            City();
+            multTranslation([0, -0.25, 0]);
+            multScale([10, 0.5, 10]);
+            Cube([0.9,0.5,0.4]);
         popMatrix();
         pushMatrix();
-            Helicopter();
+            multTranslation([2.5, 0, 2.5]);
+            multScale([10,10,10]);
+            Bunny([0.9, 0.7, 0.7]);
         popMatrix();
-            Boxes(); 
+        pushMatrix();
+            multTranslation([2.5,0.5,-2.5]);
+            Cylinder([0.3, 0.6, 0.3]);
+        popMatrix();
+        pushMatrix();
+            multTranslation([-2.5,0.5,-2.5]);
+            Cube([0.7,0.2,0.2]);
+        popMatrix();
+            multTranslation([-2.5,0.235,2.5]);
+            multScale([1.3,1.2,1.3]);
+            Torus([0.4,0.85,0.4]);
     }
 
     //___________________________________________________________________________________
     
-    function render(millisecs)
+    function render()
     {
-        if(!isTouchingGround()){
-            heli.trajectory += heli.acceleration;
-            heli.bladeVelocity += (heli.acceleration + 1.5) * 2.5;
-        }
-
         window.requestAnimationFrame(render);
-
-        time = millisecs / 1000;
-
-        decreaseSpeed();
-
-        growOld();
         
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
@@ -564,77 +315,20 @@ function setup(shaders)
     }
 
     // AUXILIARY FUNCTIONS __________________________________________________________
-    
-    function increaseSpeed()
-    {
-        isSpeedingUp = true;
-        if(heli.ascension >= SAFE_HEIGHT && !isTouchingGround()){
-            if(heli.acceleration < MAX_ACCELERATION)
-                heli.acceleration += 0.02;
-            if(heli.inclination < MAX_INCLINATION)
-                heli.inclination += 1;
-        }
-    }
-
-    function decreaseSpeed()
-    {
-        if(!isSpeedingUp && !isTouchingGround()){
-            if(heli.acceleration > MIN_ACCELERATION)
-                heli.acceleration -= 0.002;
-            if(heli.inclination > MIN_INCLINATION)
-                heli.inclination -= 0.1;
-        }
-    }
-
-    function descend()
-    {
-        if(!isTouchingGround())
-            heli.ascension -= 0.2;
-        if(heli.ascension < SAFE_HEIGHT && heli.inclination > MIN_INCLINATION){
-            heli.inclination -= Math.log(heli.ascension);
-        }
-    }
-
-    function isTouchingGround()
-    {
-        return heli.ascension <= 1;
-    }
-
-    function liftOff()
-    {
-        if(isTouchingGround())
-            heli.acceleration = 0;
-    }
-
-    function growOld()
-    {
-        for(let i = 0; i < boxes.length; i++)   
-            if(time - boxes[i].timeOfCreation >= 5)
-                boxes.shift();
-    }
-
     function enactProjection()
     {
         switch(projectionState){
             case 1:
-                mView = mult(frontView(), mult(rotateX(gammaSlider.value), rotateY(thetaSlider.value)));           
-                showSliders();
+                mView = lookAt([-VP_DISTANCE, VP_DISTANCE, VP_DISTANCE], [0, 0, 0], [0, 1, 0]);          
                 break;
             case 2:
                 mView = frontView();
-                hideSliders();
                 break;
             case 3:
                 mView = mult(frontView(), rotateX(90));
-                hideSliders();
                 break;
             case 4:
                 mView = mult(frontView(), rotateY(-90));
-                hideSliders();
-                break;
-            case 5:
-            //    loadMatrix(lookAt(heliPos, [0,0,0], [0,1,0]));
-                hideSliders();
                 break;
         }
         loadMatrix(mView);
@@ -643,18 +337,6 @@ function setup(shaders)
     function frontView()
     {
         return lookAt([0,0,VP_DISTANCE],[0,0,0],[0,1,0]);
-    }
-
-    function hideSliders()
-    {
-        document.getElementById("sliders").style.display = "none";
-    }
-
-    function showSliders()
-    {
-        document.getElementById("sliders").style.display = "block";
-      /*  console.log(thetaSlider.value);
-        console.log(gammaSlider.value); */
     }
 }
 const urls = ["shader.vert", "shader.frag"];
