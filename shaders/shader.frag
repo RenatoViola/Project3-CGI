@@ -50,13 +50,11 @@ void main() {
     vec3 L = normalize(fLight);
     vec3 V = normalize(fViewer);
     vec3 N = normalize(fNormal);
-    vec3 H = normalize(L+V);
-
     vec3 R = reflect(-L, N); //
 
     float diffuseFactor = max( dot(L,N), 0.0 );
     vec3 diffuse = diffuseFactor * diffuseColor;
-    float specularFactor = pow(max(dot(N,H), 0.0), uMaterial.shininess);
+    float specularFactor = pow(max(dot(R,V), 0.0), uMaterial.shininess);
     vec3 specular = specularFactor * specularColor;
     if( dot(L,N) < 0.0 ) {
     specular = vec3(0.0, 0.0, 0.0);
