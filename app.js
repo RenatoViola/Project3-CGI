@@ -196,14 +196,6 @@ function setup(shaders)
         this.cutoff = 10;
     }
 
-    function sendLightPositions()
-    {
-        for (let i = 0; i < lights.length; i++){
-            const uPosition = gl.getUniformLocation(program, "lightPositions[" + i + "]");
-            gl.uniform4fv(uPosition, makeAttributeArray(lights[i].position));
-        }
-    }
-
     function sendLights()
     {
         for (let i = 0; i < lights.length; i++){
@@ -370,11 +362,7 @@ function setup(shaders)
 
         setHiddenFaceRemoval();
 
-        sendLightPositions();
-
         sendLights();
-
-        
 
         FullScene();
     }
