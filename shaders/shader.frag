@@ -4,7 +4,6 @@ const int MAX_LIGHTS = 8;
 
 varying vec3 fPosition;
 varying vec3 fNormal;
-varying vec3 fViewer;
 
 struct LightInfo {
     // Light colour intensities
@@ -53,9 +52,12 @@ void main() {
     else
         L = normalize((mView*uLights[0].position).xyz - fPosition);
 
+    // Compute the view vector
+    vec3 fViewer = -fPosition; // Perspective projection
+
     vec3 V = normalize(fViewer);
     vec3 N = normalize(fNormal);
-    vec3 R = reflect(-L, N); //
+    vec3 R = reflect(-L, N); 
 
     float diffuseFactor = max( dot(L,N), 0.0 );
     vec3 diffuse = diffuseFactor * diffuseColor;
