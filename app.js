@@ -184,8 +184,8 @@ function setup(shaders)
     }
 
     function Light(){
-        this.position = {x: 0, y: 3, z: 0, w: 1};
-        this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
+        this.position = {x: 0, y: 2, z: 0, w: 1};
+        this.intensities = {ambient: [40,40,40], diffuse: [20,20,20], specular: [5,5,5]};
         this.axis = {x: 0, y: 0, z: -1};
         this.aperture = 10;
         this.cutoff = 10;
@@ -253,7 +253,7 @@ function setup(shaders)
 
     function setupMaterialsFolder()
     {
-        materialsController = {Ka: [8,3,3], Kd: [15,2,2], Ks: [200,200,200], shininess: 100};
+        materialsController = {Ka: [255,255,255], Kd: [255,255,255], Ks: [255,255,255], shininess: 10};
 
         materialsFolder.addColor(materialsController, "Ka");
         materialsFolder.addColor(materialsController, "Kd");
@@ -286,28 +286,28 @@ function setup(shaders)
     function Ground()
     {
         uploadMatrixes();  
-        defineMaterialProperties([1,0.5,0.5],[1,0.5,0.5],[1,1,1], 20);
+        defineMaterialProperties([255,128,128],[255,128,128],[255,255,255], 5);
         CUBE.draw(gl, program, mode);
     }
 
     function Cube()
     {
         uploadMatrixes();
-        defineMaterialProperties([0.7,0.2,0.2],[0.7,0.2,0.2],[1,1,1], 5);
+        defineMaterialProperties([180,50,50],[180,50,50],[255,255,255], 5);
         CUBE.draw(gl, program, mode);
     }
 
     function Cylinder()
     {
         uploadMatrixes();
-        defineMaterialProperties([0.3,0.6,0.3],[0.3,0.6,0.3],[1,1,1], 5);
+        defineMaterialProperties([80,160,80],[80,160,80],[255,255,255], 5);
         CYLINDER.draw(gl, program, mode);
     }
 
     function Torus()
     {
         uploadMatrixes();
-        defineMaterialProperties([0.4,0.85,0.4],[0.4,0.85,0.4],[1,1,1], 5);
+        defineMaterialProperties([100,215,100],[100,215,100],[255,255,255], 5);
         TORUS.draw(gl, program, mode);
     }
 
@@ -362,6 +362,8 @@ function setup(shaders)
         setHiddenFaceRemoval();
 
         sendLights();
+
+        if(lights.length)
 
         FullScene();
     }

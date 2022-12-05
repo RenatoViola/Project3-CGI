@@ -52,9 +52,9 @@ void main() {
         LightInfo light = uLights[i];
 
         if(light.on){
-            ambientColor += toRGB(light.ambient) * uMaterial.Ka;     //Ia * Ka
-            diffuseColor += toRGB(light.diffuse) * uMaterial.Kd;     //Id * Kd
-            specularColor += toRGB(light.specular) * uMaterial.Ks;    //Is * Ks
+            ambientColor += toRGB(light.ambient) * toRGB(uMaterial.Ka);     //Ia * Ka
+            diffuseColor += toRGB(light.diffuse) * toRGB(uMaterial.Kd);     //Id * Kd
+            specularColor += toRGB(light.specular) * toRGB(uMaterial.Ks);    //Is * Ks
 
             // compute light vector in camera frame
             if(light.position.w == 0.0)
