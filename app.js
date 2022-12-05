@@ -363,8 +363,6 @@ function setup(shaders)
 
         sendLights();
 
-        if(lights.length)
-
         FullScene();
     }
 
