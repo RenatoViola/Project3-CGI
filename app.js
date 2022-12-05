@@ -185,7 +185,7 @@ function setup(shaders)
 
     function Light(){
         this.position = {x: 0, y: 2, z: 0, w: 1};
-        this.intensities = {ambient: [40,40,40], diffuse: [20,20,20], specular: [5,5,5]};
+        this.intensities = {ambient: [40,40,40], diffuse: [30,30,30], specular: [5,5,5]};
         this.axis = {x: 0, y: 0, z: -1};
         this.aperture = 10;
         this.cutoff = 10;
@@ -253,7 +253,7 @@ function setup(shaders)
 
     function setupMaterialsFolder()
     {
-        materialsController = {Ka: [255,255,255], Kd: [255,255,255], Ks: [255,255,255], shininess: 10};
+        materialsController = {Ka: [190,190,190], Kd: [220,185,185], Ks: [200,200,200], shininess: 10};
 
         materialsFolder.addColor(materialsController, "Ka");
         materialsFolder.addColor(materialsController, "Kd");
