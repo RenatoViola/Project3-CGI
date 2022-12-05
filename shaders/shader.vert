@@ -1,4 +1,4 @@
-const vec4 lightPosition = vec4(0.0, 1.8, 1.3, 1.0);
+const int MAX_LIGHTS = 8;
 
 attribute vec4 vPosition; // vertex position in modelling coordinates
 attribute vec4 vNormal; // vertex normal in modelling coordinates
@@ -10,6 +10,8 @@ uniform mat4 mView; // view transformation (for points)
 uniform mat4 mViewNormals; // view transformation (for vectors)
 
 uniform mat4 mProjection; // projection matrix
+
+uniform vec4 lightPositions[MAX_LIGHTS];
 
 varying vec3 fNormal; // normal vector in camera space
 varying vec3 fLight; // Light vector in camera space
@@ -23,10 +25,10 @@ void main(){
  fNormal = (mNormals * vNormal).xyz;
 
  // compute light vector in camera frame
- if(lightPosition.w == 0.0)
-    fLight = normalize((mViewNormals * lightPosition).xyz);
+ if(lightPositions[0].w == 0.0)
+    fLight = normalize((mViewNormals * lightPositions[0]).xyz);
  else
-    fLight = normalize((mView*lightPosition).xyz - posC);
+    fLight = normalize((mView*lightPositions[0]).xyz - posC);
 
  // Compute the view vector
   fViewer = -posC; // Perspective projection

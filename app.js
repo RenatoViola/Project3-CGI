@@ -56,8 +56,9 @@ function setup(shaders)
     document.onkeydown = function(event) 
     {
         switch(event.key) {
-            case 'l':
-                addLight();
+            case ' ':
+                if (lights.length < 1)  //
+                    addLight();
                 break;
         }
     }
@@ -67,6 +68,7 @@ function setup(shaders)
     CUBE.init(gl);
     TORUS.init(gl);
     BUNNY.init(gl);
+    gl.enable(gl.CULL_FACE);    // Enables Backface culling
     gl.enable(gl.DEPTH_TEST);   // Enables Z-buffer depth test
     
     window.requestAnimationFrame(render);
@@ -79,7 +81,7 @@ function setup(shaders)
         aspect = canvas.width / canvas.height;
 
         gl.viewport(0,0,canvas.width, canvas.height);
-        mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);
+    //    mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);
     }
 
     function uploadModelView()
@@ -174,11 +176,55 @@ function setup(shaders)
     }
 
     function Light(){
-        this.position = {x: 0, y: 0, z: 0, w: 1};
+        this.position = {x: 0, y: 1.8, z: 1.3, w: 1};
         this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
         this.axis = {x: 0, y: 0, z: -1};
         this.aperture = 10;
         this.cutoff = 10;
+    }
+
+    function sendLightPositions()
+    {
+        for (let i = 0; i < lights.length; i++){
+            const uPosition = gl.getUniformLocation(program, "lightPositions[" + i + "]");
+            gl.uniform4fv(uPosition, makeAttributeArray(lights[i].position));
+        }
+    }
+
+    function sendLights()
+    {
+        for (let i = 0; i < lights.length; i++){
+            const uAmbient = gl.getUniformLocation(program, "uLights[" + i + "].ambient");
+            const uDiffuse = gl.getUniformLocation(program, "uLights[" + i + "].diffuse");
+            const uSpecular = gl.getUniformLocation(program, "uLights[" + i + "].specular");
+            const uPosition = gl.getUniformLocation(program, "uLights[" + i + "].position");
+            const uAxis = gl.getUniformLocation(program, "uLights[" + i + "].axis");
+            const uAperture = gl.getUniformLocation(program, "uLights[" + i + "].aperture");
+            const uCutoff = gl.getUniformLocation(program, "uLights[" + i + "].cutoff");
+
+            let light = lights[i];
+
+            gl.uniform3fv(uAmbient, light.intensities.ambient);
+            gl.uniform3fv(uDiffuse, light.intensities.diffuse);
+            gl.uniform3fv(uSpecular, light.intensities.specular);
+            gl.uniform4fv(uPosition, makeAttributeArray(light.position));
+            gl.uniform3fv(uAxis, makeAttributeArray(light.axis));
+            gl.uniform1f(uAperture, light.aperture);
+            gl.uniform1f(uCutoff, light.cutoff);
+        }
+    }
+
+    function defineMaterialProperties(materialAmb, materialDif, materialSpe, shininess)
+    {
+        const uMaterialAmb = gl.getUniformLocation(program, "uMaterial.Ka");
+        const uMaterialDif = gl.getUniformLocation(program, "uMaterial.Kd");
+        const uMaterialSpe = gl.getUniformLocation(program, "uMaterial.Ks");
+        const uShininess = gl.getUniformLocation(program, "uMaterial.shininess");
+
+        gl.uniform3fv(uMaterialAmb, materialAmb);
+        gl.uniform3fv(uMaterialDif, materialDif);
+        gl.uniform3fv(uMaterialSpe, materialSpe);
+        gl.uniform1f(uShininess, shininess);
     }
 
     function createLightFolder(light){
@@ -203,8 +249,8 @@ function setup(shaders)
 
     function setupMaterialsFolder()
     {
-        let KaRGB = [17,3,3];
-        let KdRGB = [17,3,3];
+        let KaRGB = [8,3,3];
+        let KdRGB = [15,2,2];
         let KsRGB = [200,200,200];
         let shininessValue = 100;
         materialsController = {Ka: KaRGB, Kd: KdRGB, Ks: KsRGB, shininess: shininessValue};
@@ -312,6 +358,10 @@ function setup(shaders)
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection));
 
         enactView();
+
+        sendLightPositions();
+
+        sendLights();
 
         FullScene();
     }
