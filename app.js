@@ -151,15 +151,15 @@ function setup(shaders)
 
     function setupProjectionFolder()
     {
-        projectionController = {fovy: 45, near: 0.1, far: 40};
+        projectionController = {fovy: 45, near: 0.1, far: 50};
         projectionFolder.add(projectionController, "fovy", 1, 180, 1);
-        projectionFolder.add(projectionController, "near", 0.1, 40, 0.1);
-        projectionFolder.add(projectionController, "far", 0.1, 40, 0.1);
+        projectionFolder.add(projectionController, "near", 0.1, 50, 0.1);
+        projectionFolder.add(projectionController, "far", 0.1, 100, 0.1);
     }
 
     function setupCameraFolder()
     {
-        let eyeXYZ = {x: 0, y: VP_DISTANCE, z: VP_DISTANCE};
+        let eyeXYZ = {x: 0, y: VP_DISTANCE / 2, z: VP_DISTANCE};
         let atXYZ = {x: 0, y: 0, z: 0};
         let upXYZ = {x: 0, y: 1, z: 0};
         cameraController = {eye: eyeXYZ, at: atXYZ, up: upXYZ}; 
@@ -185,7 +185,7 @@ function setup(shaders)
 
     function Light(){
         this.position = {x: 0, y: 2, z: 0, w: 1};
-        this.intensities = {ambient: [40,40,40], diffuse: [30,30,30], specular: [5,5,5]};
+        this.intensities = {ambient: [50,50,50], diffuse: [30,30,30], specular: [5,5,5]};
         this.axis = {x: 0, y: 0, z: -1};
         this.aperture = 10;
         this.cutoff = 10;
@@ -354,6 +354,8 @@ function setup(shaders)
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
         gl.useProgram(program);
+
+        const mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far); 
         
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection));
 
@@ -372,8 +374,7 @@ function setup(shaders)
         let eye = makeAttributeArray(cameraController.eye);
         let at = makeAttributeArray(cameraController.at);
         let up = makeAttributeArray(cameraController.up);
-        mView = lookAt(eye, at, up);    
-        mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);    
+        mView = lookAt(eye, at, up);       
         loadMatrix(mView);
     }
 
