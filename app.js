@@ -29,7 +29,6 @@ let materialsFolder;
 let optionController;
 let projectionController;
 let cameraController;
-let lightsController;
 let materialsController;
 
 let lights = [];
@@ -57,7 +56,7 @@ function setup(shaders)
     {
         switch(event.key) {
             case ' ':
-                if (lights.length < 1)  //
+                if (lights.length < MAX_LIGHTS)
                     addLight();
                 break;
         }
@@ -68,8 +67,6 @@ function setup(shaders)
     CUBE.init(gl);
     TORUS.init(gl);
     BUNNY.init(gl);
-    gl.enable(gl.CULL_FACE);    // Enables Backface culling
-    gl.enable(gl.DEPTH_TEST);   // Enables Z-buffer depth test
     
     window.requestAnimationFrame(render);
 
@@ -128,7 +125,6 @@ function setup(shaders)
         setupOptionsFolder();
         setupProjectionFolder();
         setupCameraFolder();
-        setupLightsFolder();
         setupMaterialsFolder();
     }
 
@@ -155,7 +151,7 @@ function setup(shaders)
 
     function setupProjectionFolder()
     {
-        projectionController = {fovy: 45, near: 10, far: 40};
+        projectionController = {fovy: 45, near: 0.1, far: 40};
         projectionFolder.add(projectionController, "fovy", 1, 180, 1);
         projectionFolder.add(projectionController, "near", 0.1, 40, 0.1);
         projectionFolder.add(projectionController, "far", 0.1, 40, 0.1);
@@ -177,23 +173,23 @@ function setup(shaders)
         setupXYZ(upFolder, upXYZ);
     }
 
-    function setupLightsFolder()
-    {
-
-    }
-
     function addLight(){
         let light = new Light();
         lights.push(light);
         createLightFolder(light);
+
+        gl.useProgram(program);
+        const uNLights = gl.getUniformLocation(program, "uNLights");
+        gl.uniform1i(uNLights, lights.length);
     }
 
     function Light(){
-        this.position = {x: 0, y: 1.8, z: 1.3, w: 1};
+        this.position = {x: 0, y: 3, z: 0, w: 1};
         this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
         this.axis = {x: 0, y: 0, z: -1};
         this.aperture = 10;
         this.cutoff = 10;
+        this.on = true;
     }
 
     function sendLights()
@@ -206,6 +202,7 @@ function setup(shaders)
             const uAxis = gl.getUniformLocation(program, "uLights[" + i + "].axis");
             const uAperture = gl.getUniformLocation(program, "uLights[" + i + "].aperture");
             const uCutoff = gl.getUniformLocation(program, "uLights[" + i + "].cutoff");
+            const uOn = gl.getUniformLocation(program, "uLights[" + i + "].on");
 
             let light = lights[i];
 
@@ -216,6 +213,7 @@ function setup(shaders)
             gl.uniform3fv(uAxis, makeAttributeArray(light.axis));
             gl.uniform1f(uAperture, light.aperture);
             gl.uniform1f(uCutoff, light.cutoff);
+            gl.uniform1i(uOn, light.on);
         }
     }
 
@@ -235,6 +233,7 @@ function setup(shaders)
     function createLightFolder(light){
         const lightName = "Light " + lights.length;
         let lightFolder = lightsFolder.addFolder(lightName);
+        lightFolder.add(light, "on");
         let positionFolder = lightFolder.addFolder("position");
         let intensitiesFolder = lightFolder.addFolder("intensities");
         let axisFolder = lightFolder.addFolder("axis");

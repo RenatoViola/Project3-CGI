@@ -1,5 +1,3 @@
-const int MAX_LIGHTS = 8;
-
 attribute vec4 vPosition; // vertex position in modelling coordinates
 attribute vec4 vNormal; // vertex normal in modelling coordinates
 
@@ -7,8 +5,6 @@ uniform mat4 mModelView; // model-view transformation
 uniform mat4 mNormals; // model-view transformation for normals
 
 uniform mat4 mProjection; // projection matrix
-
-uniform vec4 lightPositions[MAX_LIGHTS];
 
 varying vec3 fNormal; // normal vector in camera space
 varying vec3 fPosition; // fragment position in camera space

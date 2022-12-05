@@ -19,6 +19,7 @@ struct LightInfo {
     float aperture;
     float cutoff;
     // ...
+    bool on;
 };
 
 struct MaterialInfo {
@@ -41,19 +42,30 @@ vec3 toRGB(vec3 array){
 }
 
 void main() {
-    vec3 ambientColor = toRGB(uLights[0].ambient) * uMaterial.Ka;     //Ia * Ka
-    vec3 diffuseColor = toRGB(uLights[0].diffuse) * uMaterial.Kd;     //Id * Kd
-    vec3 specularColor = toRGB(uLights[0].specular) * uMaterial.Ks;    //Is * Ks
-
-    // compute light vector in camera frame
     vec3 L;
-    if(uLights[0].position.w == 0.0)
-        L = normalize((mViewNormals * uLights[0].position).xyz);
-    else
-        L = normalize((mView*uLights[0].position).xyz - fPosition);
+    vec3 ambientColor;
+    vec3 diffuseColor;
+    vec3 specularColor;
+    for(int i = 0; i < MAX_LIGHTS; i++) {
+        if(i == uNLights) break;  
 
+        LightInfo light = uLights[i];
+
+        if(light.on){
+            ambientColor += toRGB(light.ambient) * uMaterial.Ka;     //Ia * Ka
+            diffuseColor += toRGB(light.diffuse) * uMaterial.Kd;     //Id * Kd
+            specularColor += toRGB(light.specular) * uMaterial.Ks;    //Is * Ks
+
+            // compute light vector in camera frame
+            if(light.position.w == 0.0)
+                L += normalize((mViewNormals * light.position).xyz);
+            else
+                L += normalize((mView * light.position).xyz - fPosition);
+        }
+    }
+    
     // Compute the view vector
-    vec3 fViewer = -fPosition; // Perspective projection
+    vec3 fViewer = - fPosition; // Perspective projection
 
     vec3 V = normalize(fViewer);
     vec3 N = normalize(fNormal);
@@ -64,7 +76,7 @@ void main() {
     float specularFactor = pow(max(dot(R,V), 0.0), uMaterial.shininess);
     vec3 specular = specularFactor * specularColor;
     if( dot(L,N) < 0.0 ) {
-    specular = vec3(0.0, 0.0, 0.0);
+        specular = vec3(0.0, 0.0, 0.0);
     }
     gl_FragColor = vec4(ambientColor + diffuse + specular, 1.0);
 }
