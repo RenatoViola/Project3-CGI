@@ -1,5 +1,5 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import { ortho, lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose} from "../../libs/MV.js";
+import {lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose} from "../../libs/MV.js";
 import {modelView, loadMatrix, multRotationX, multRotationY, multRotationZ, multScale, pushMatrix, popMatrix, multTranslation } from "../../libs/stack.js";
 import { GUI } from "../../libs/dat.gui.module.js";
 import * as CYLINDER from '../../libs/objects/cylinder.js';
@@ -10,7 +10,7 @@ import * as BUNNY from '../../libs/objects/bunny.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-let mode;               // Drawing mode (gl.LINES or gl.TRIANGLES)
+let mode;
 
 let mProjection;
 let mView;
@@ -140,6 +140,19 @@ function setup(shaders)
         optionsFolder.add(optionController, "zb").name("Depth test");
     }
 
+    function setHiddenFaceRemoval()
+    {
+        if (optionController.culling)   
+            gl.enable(gl.CULL_FACE);
+        else 
+            gl.disable(CULL_FACE);
+
+        if (optionController.zb)   
+            gl.enable(gl.DEPTH_TEST);
+        else 
+            gl.disable(gl.DEPTH_TEST);
+    }
+
     function setupProjectionFolder()
     {
         projectionController = {fovy: 45, near: 10, far: 40};
@@ -249,11 +262,7 @@ function setup(shaders)
 
     function setupMaterialsFolder()
     {
-        let KaRGB = [8,3,3];
-        let KdRGB = [15,2,2];
-        let KsRGB = [200,200,200];
-        let shininessValue = 100;
-        materialsController = {Ka: KaRGB, Kd: KdRGB, Ks: KsRGB, shininess: shininessValue};
+        materialsController = {Ka: [8,3,3], Kd: [15,2,2], Ks: [200,200,200], shininess: 100};
 
         materialsFolder.addColor(materialsController, "Ka");
         materialsFolder.addColor(materialsController, "Kd");
@@ -359,9 +368,13 @@ function setup(shaders)
 
         enactView();
 
+        setHiddenFaceRemoval();
+
         sendLightPositions();
 
         sendLights();
+
+        
 
         FullScene();
     }
