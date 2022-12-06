@@ -199,7 +199,7 @@ function setup(shaders)
 
     function Light(){
         this.position = {x: 0, y: 2, z: 0, w: 1};
-        this.intensities = {ambient: [50,50,50], diffuse: [30,30,30], specular: [5,5,5]};
+        this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
         this.axis = {x: 0, y: 0, z: -1};
         this.aperture = 10;
         this.cutoff = 10;
