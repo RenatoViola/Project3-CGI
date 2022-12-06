@@ -12,7 +12,6 @@ let gl;
 
 let mode;
 
-let mProjection;
 let mView;
 
 const VP_DISTANCE = 10;
@@ -33,6 +32,9 @@ let materialsController;
 
 let lights = [];
 
+let dragging = false;
+let mouseDrag = {x: 0, y: 0};
+
 
 function setup(shaders)
 {
@@ -44,8 +46,6 @@ function setup(shaders)
     setupGUI();
 
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
-
-    mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);
 
     mode = gl.TRIANGLES; 
 
@@ -78,8 +78,22 @@ function setup(shaders)
         aspect = canvas.width / canvas.height;
 
         gl.viewport(0,0,canvas.width, canvas.height);
-    //    mProjection = perspective(projectionController.fovy, aspect, projectionController.near, projectionController.far);
     }
+
+    canvas.addEventListener("mousedown", function(event) {
+        dragging = true;
+    });
+
+    canvas.addEventListener("mousemove", function(event) {
+        if(dragging){
+            mouseDrag.x += event.movementX;
+            mouseDrag.y += event.movementY;
+        }
+    });
+
+    canvas.addEventListener("mouseup", function(event) {
+        dragging = false;
+    })
 
     function uploadModelView()
     {
@@ -374,7 +388,7 @@ function setup(shaders)
         let eye = makeAttributeArray(cameraController.eye);
         let at = makeAttributeArray(cameraController.at);
         let up = makeAttributeArray(cameraController.up);
-        mView = lookAt(eye, at, up);       
+        mView = mult(lookAt(eye, at, up), mult(rotateX(mouseDrag.y), rotateY(mouseDrag.x)));      
         loadMatrix(mView);
     }
 

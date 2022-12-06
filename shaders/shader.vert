@@ -11,9 +11,7 @@ varying vec3 fPosition; // fragment position in camera space
 
 void main(){
    // compute position in camera frame
-   vec3 posC = (mModelView * vPosition).xyz;
-
-   fPosition = posC;
+   fPosition = (mModelView * vPosition).xyz;
 
    // compute normal in camera frame
    fNormal = (mNormals * vNormal).xyz;
