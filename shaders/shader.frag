@@ -68,17 +68,29 @@ void main() {
             else
                 L = normalize((mView * light.position).xyz - fPosition);
 
-            vec3 R = reflect(-L, N); 
+            vec3 R = reflect(-L, N);
 
+	    float SpotFactor = dot(L, normalize(mView *vec4(light.axis,0.0)).xyz); // em vez N calcular direção da velocidade
+
+	    float SpotLightIntensity = 0.0;
+	    if (SpotFactor > light.aperture) {
+	      SpotLightIntensity = max(dot(N,L),0.0);
+	    }
+
+	    //PROBLEMA: para valores baixos do aperture
+	    //o spotlightIntensity vai ter valores baixos
+	    //o que faz com que haja alguma iluminação embora
+	    //ela não exista
+	    
             float diffuseFactor = max( dot(L,N), 0.0 );
-            vec3 diffuse = diffuseFactor * diffuseColor;
+            vec3 diffuse = SpotLightIntensity* diffuseFactor * diffuseColor;
             float specularFactor = pow(max(dot(R,V), 0.0), uMaterial.shininess);
-            vec3 specular = specularFactor * specularColor;
+            vec3 specular = SpotLightIntensity *specularFactor  * specularColor;
             if( dot(L,N) < 0.0 ) {
                 specular = vec3(0.0, 0.0, 0.0);
             }    
 
-            I += ambientColor + diffuse + specular;
+            I += (ambientColor + diffuse + specular);
         }
     }
     
