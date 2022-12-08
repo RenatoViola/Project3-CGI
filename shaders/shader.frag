@@ -74,13 +74,9 @@ void main() {
 
 	    float SpotLightIntensity = 0.0;
 	    if (SpotFactor > light.aperture) {
-	      SpotLightIntensity = max(dot(N,L),0.0);
+	      float epsilon   = light.aperture - light.cutoff;
+	      SpotLightIntensity = clamp((SpotFactor - light.aperture) / epsilon, 0.0, 1.0);
 	    }
-
-	    //PROBLEMA: para valores baixos do aperture
-	    //o spotlightIntensity vai ter valores baixos
-	    //o que faz com que haja alguma iluminação embora
-	    //ela não exista
 	    
             float diffuseFactor = max( dot(L,N), 0.0 );
             vec3 diffuse = diffuseFactor * diffuseColor;
@@ -91,7 +87,7 @@ void main() {
             }    
 	    if(SpotLightIntensity != 0.0){
 	      I += ambientColor + SpotLightIntensity * (diffuse + specular);
-	      }
+	    }
         }
     }
     

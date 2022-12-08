@@ -202,7 +202,7 @@ function setup(shaders)
         this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
         this.axis = {x: 0, y: 2, z: 0};
         this.aperture = 180;
-        this.cutoff = 0;
+        this.cutoff = 180;
         this.on = true;
     }
 
