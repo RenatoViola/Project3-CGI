@@ -68,17 +68,23 @@ void main() {
             else
                 L = normalize((mView * light.position).xyz - fPosition);
 
-            vec3 R = reflect(-L, N); 
+            vec3 R = reflect(-L, N);
 
-            float diffuseFactor = max( dot(L,N), 0.0 );
+	    float cos_alpha = dot(L, normalize(mView * vec4(-light.axis,0.0)).xyz);
+
+        float diffuseFactor = max( dot(L,N), 0.0 );
             vec3 diffuse = diffuseFactor * diffuseColor;
             float specularFactor = pow(max(dot(R,V), 0.0), uMaterial.shininess);
-            vec3 specular = specularFactor * specularColor;
-            if( dot(L,N) < 0.0 ) {
+            vec3 specular = specularFactor  * specularColor;
+            if( dot(L,N) < 0.0 )
                 specular = vec3(0.0, 0.0, 0.0);
-            }    
 
-            I += ambientColor + diffuse + specular;
+	    float attenuationFactor;
+
+	    if (cos_alpha > cos(light.aperture)) 
+	        attenuationFactor = pow(cos_alpha, light.cutoff);
+                    
+	    I += ambientColor + attenuationFactor * (diffuse + specular);
         }
     }
     

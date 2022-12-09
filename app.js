@@ -200,9 +200,9 @@ function setup(shaders)
     function Light(){
         this.position = {x: 0, y: 2, z: 0, w: 1};
         this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
-        this.axis = {x: 0, y: 0, z: -1};
-        this.aperture = 10;
-        this.cutoff = 10;
+        this.axis = {x: 0, y: -2, z: 0};
+        this.aperture = 90;
+        this.cutoff = 0;
         this.on = true;
     }
 
@@ -225,7 +225,7 @@ function setup(shaders)
             gl.uniform3fv(uSpecular, light.intensities.specular);
             gl.uniform4fv(uPosition, makeAttributeArray(light.position));
             gl.uniform3fv(uAxis, makeAttributeArray(light.axis));
-            gl.uniform1f(uAperture, light.aperture);
+            gl.uniform1f(uAperture, toRadians(light.aperture));
             gl.uniform1f(uCutoff, light.cutoff);
             gl.uniform1i(uOn, light.on);
         }
@@ -261,8 +261,8 @@ function setup(shaders)
 
         setupXYZ(axisFolder, light.axis);
 
-        lightFolder.add(light, "aperture", 0, 360, 1);
-        lightFolder.add(light, "cutoff", 0, 100, 1);
+        lightFolder.add(light, "aperture", 0, 90, 1);
+        lightFolder.add(light, "cutoff", 0, 2, 0.1);
     }
 
     function setupMaterialsFolder()
@@ -399,6 +399,11 @@ function setup(shaders)
             array.push(obj[a]);
         return array;
     }
+
+    function toRadians (angle) {
+	return angle * (Math.PI / 180);
+    }
+
 }
 const urls = ["shader.vert", "shader.frag"];
 loadShadersFromURLS(urls).then(shaders => setup(shaders))
