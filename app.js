@@ -399,6 +399,11 @@ function setup(shaders)
             array.push(obj[a]);
         return array;
     }
+
+    function toRadians (angle) {
+	return angle * (Math.PI / 180);
+    }
+
 }
 const urls = ["shader.vert", "shader.frag"];
 loadShadersFromURLS(urls).then(shaders => setup(shaders))
