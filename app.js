@@ -1,5 +1,5 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import {lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose} from "../../libs/MV.js";
+import {lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose, radians} from "../../libs/MV.js";
 import {modelView, loadMatrix, multRotationX, multRotationY, multRotationZ, multScale, pushMatrix, popMatrix, multTranslation } from "../../libs/stack.js";
 import { GUI } from "../../libs/dat.gui.module.js";
 import * as CYLINDER from '../../libs/objects/cylinder.js';
@@ -225,7 +225,7 @@ function setup(shaders)
             gl.uniform3fv(uSpecular, light.intensities.specular);
             gl.uniform4fv(uPosition, makeAttributeArray(light.position));
             gl.uniform3fv(uAxis, makeAttributeArray(light.axis));
-            gl.uniform1f(uAperture, toRadians(light.aperture));
+            gl.uniform1f(uAperture, radians(light.aperture));
             gl.uniform1f(uCutoff, light.cutoff);
             gl.uniform1i(uOn, light.on);
         }
@@ -399,11 +399,6 @@ function setup(shaders)
             array.push(obj[a]);
         return array;
     }
-
-    function toRadians (angle) {
-	return angle * (Math.PI / 180);
-    }
-
 }
 const urls = ["shader.vert", "shader.frag"];
 loadShadersFromURLS(urls).then(shaders => setup(shaders))
