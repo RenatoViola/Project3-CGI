@@ -188,7 +188,7 @@ function setup(shaders)
         setupXYZ(axisFolder, light.axis);
 
         lightFolder.add(light, "aperture", 0, 180, 0.5);
-        lightFolder.add(light, "cutoff", 0, 8, 0.1);
+        lightFolder.add(light, "cutoff", 0, 200, 0.1);
     }
 
     function setupMaterialsFolder()
