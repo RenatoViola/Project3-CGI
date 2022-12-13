@@ -58,7 +58,8 @@ void main() {
             vec3 diffuseColor = toRGB(light.diffuse) * toRGB(uMaterial.Kd);     //Id * Kd
             vec3 specularColor = toRGB(light.specular) * toRGB(uMaterial.Ks);    //Is * Ks
 
-            float attenuationFactor;
+            float attenuationFactor = 0.0;
+	    
             vec3 L;
             // compute light vector in camera frame
             if(light.position.w == 0.0){
@@ -67,7 +68,7 @@ void main() {
             }else{
                 L = normalize(light.position.xyz - fPosition);
 
-                float cos_alpha = dot(L, normalize(vec4(-light.axis,0.0).xyz));
+                float cos_alpha = dot(L, normalize(-light.axis));
 
                 if (cos_alpha > cos(light.aperture)) 
                     attenuationFactor = pow(cos_alpha, light.cutoff);
