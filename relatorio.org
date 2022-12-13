@@ -1,0 +1,305 @@
+#+title: Relatório CGI Projeto 3
+#+author: Afonso Ribeiro 59895, Renato Viola 60665
+#+latex_class: article
+#+latex_class_options: [a4paper]
+
+
+* Tipos de dados usados e a sua explicação
+** No lado de Javascript
+
+Um objeto Light é composto por posição, um eixo, uma abertura e um cutoff.
+
+#+begin_src js
+	//Constructor function for a light
+	function Light(position, axis, aperture, cutoff){
+	    this.position = position;
+	    this.intensities ={ambient: [40,40,40],
+			       diffuse: [40,40,40],
+			       specular: [200,200,200]};
+	    this.axis = axis;
+	    this.aperture = aperture;
+	    this.cutoff = cutoff;
+	    this.on = true;
+	}
+#+end_src
+
+Dependendo do tipo de luz, algumas das variáveis podem não ser necessárias a não ser que o utilizador deseje mudar o tempo de luz durante a execução.
+
+Estas luzes são criadas com as seguintes três funções:
+
+#+begin_src js
+function SpotLight()
+{
+    let position = {x: 0, y: 2, z: 0, w: 1};
+    let axis = {x: 5, y: -177, z: -607};
+    let aperture = 17;
+    let cutoff = 2;
+
+    return new Light(position, axis, aperture, cutoff);
+}
+
+function DirectionalLight()
+{
+    let position = {x: -5, y: 7, z: 3, w: 0};
+    let axis = {x: 0, y: -2, z: 0};
+    let aperture = 180;
+    let cutoff = 0;
+
+    return new Light(position, axis, aperture, cutoff);
+}
+
+function PontualLight()
+{
+    let position = {x: 0, y: 2, z: 0, w: 1};
+    let axis = {x: 0, y: -2, z: 0};
+    let aperture = 180;
+    let cutoff = 0;
+    
+    return new Light(position, axis, aperture, cutoff);
+}  
+#+end_src
+
+Estas luzes depois são armazenadas num array lights para uso posterior.
+
+#+begin_src js
+  function addLight(light){
+      if (lights.length < MAX_LIGHTS){
+	  lights.push(light); // luz adicionada ao array lights
+	  createLightFolder(light); // pasta criada para cada luz
+
+	  gl.useProgram(program);
+	  const uNLights = gl.getUniformLocation(program, "uNLights");
+	  gl.uniform1i(uNLights, lights.length); // atualiza valor do
+	                                         // número de luzes nos shaders
+      }
+  }
+#+end_src
+
+O array lights é usado cada vez que se desenha um frame para enviar as informações de cada luz presente no cenário.
+
+#+begin_src js
+function sendLights()
+{
+    for (let i = 0; i < lights.length; i++){
+	const uAmbient =
+	gl.getUniformLocation(program, "uLights[" + i + "].ambient");
+	const uDiffuse =
+	gl.getUniformLocation(program, "uLights[" + i + "].diffuse");
+	const uSpecular =
+	gl.getUniformLocation(program, "uLights[" + i + "].specular");
+	const uPosition =
+	gl.getUniformLocation(program, "uLights[" + i + "].position");
+	const uAxis =
+	gl.getUniformLocation(program, "uLights[" + i + "].axis");
+	const uAperture =
+	gl.getUniformLocation(program, "uLights[" + i + "].aperture");
+	const uCutoff =
+	gl.getUniformLocation(program, "uLights[" + i + "].cutoff");
+	const uOn =
+        gl.getUniformLocation(program, "uLights[" + i + "].on");
+
+	let light = lights[i];
+
+	gl.uniform3fv(uAmbient, light.intensities.ambient);
+	gl.uniform3fv(uDiffuse, light.intensities.diffuse);
+	gl.uniform3fv(uSpecular, light.intensities.specular);
+	gl.uniform4fv(uPosition, makeAttributeArray(light.position));
+	gl.uniform3fv(uAxis, makeAttributeArray(light.axis));
+	gl.uniform1f(uAperture, radians(light.aperture));
+	gl.uniform1f(uCutoff, light.cutoff);
+	gl.uniform1i(uOn, light.on);
+    }
+}  
+#+end_src
+
+Para além das luzes, mandamos para o shader a informação do material de cada um dos objetos. Os valores do coelho valores podem ser alterados em tempo de execução pelo utilizador usando a biblioteca dat.gui.
+
+#+begin_src js
+function defineMaterialProperties(materialAmb, materialDif, materialSpe, shininess)
+{
+    const uMaterialAmb = gl.getUniformLocation(program, "uMaterial.Ka");
+    const uMaterialDif = gl.getUniformLocation(program, "uMaterial.Kd");
+    const uMaterialSpe = gl.getUniformLocation(program, "uMaterial.Ks");
+    const uShininess = gl.getUniformLocation(program, "uMaterial.shininess");
+
+    gl.uniform3fv(uMaterialAmb, materialAmb);
+    gl.uniform3fv(uMaterialDif, materialDif);
+    gl.uniform3fv(uMaterialSpe, materialSpe);
+    gl.uniform1f(uShininess, shininess);
+}
+#+end_src
+
+** No lado do Vertex Shader
+No vertex shader são feitos os cálculos das seguintes variáveis para serem passadas para o fragment shader.
+
+#+begin_src glsl
+varying vec3 fNormal; // normal vector in camera space
+varying vec3 fPosition; // fragment position in camera space
+#+end_src
+
+Onde o valor delas é obtido pelos seguintes cálculos:
+
+#+begin_src glsl
+fPosition = (mModelView * vPosition).xyz; // compute position in camera frame
+fNormal = (mNormals * vNormal).xyz; // compute normal in camera frame
+#+end_src
+
+** No lado do Fragment Shader
+
+Obtidos os valores do vertex shader passamos para os dados do Fragment Shader.
+
+Dentro do fragment shader, as informações estão estruturadas da seguinte maneira:
+#+begin_src glsl
+struct LightInfo {
+    // Light colour intensities
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+
+    // Light geometry
+    vec4 position;  // Position/direction of light (in camera coordinates)
+    // ...
+    //   additional fields
+    vec3 axis;
+    float aperture;
+    float cutoff;
+    // ...
+    bool on;
+};
+
+#+end_src
+
+Como vimos anteriormente, estes valores são enviados para o fragment shader através do código javascript. Cada uma das luzes é armazenada no seguinte array:
+
+#+begin_src glsl
+uniform LightInfo uLights[MAX_LIGHTS];
+#+end_src
+
+O número de luzes presentes na cena é dado por:
+#+begin_src glsl
+uniform int uNLights; // Effective number of lights used
+#+end_src
+
+Para além das informações das luzes também temos a informação do material dos objetos:
+
+#+begin_src glsl
+struct MaterialInfo {
+    vec3 Ka;
+    vec3 Kd;
+    vec3 Ks;
+    float shininess;
+};
+#+end_src
+
+Como foi referido antes, apenas os valores do coelho podem ser alterados em tempo de execução enquanto os restantes objetos não têm essa possibilidade.
+
+* Implementação do Spotlight
+
+#+DOWNLOADED: screenshot @ 2022-12-13 12:33:04
+[[file:Implementação_do_Spotlight/2022-12-13_12-33-04_screenshot.png]]
+
+
+
+Primeiro, nós calculamos o vetor da luz na superfice da mesma maneira que fazemos com a luz pontual.
+
+#+begin_src glsl
+L = normalize(light.position.xyz - fPosition);
+#+end_src
+
+Já com o vetor da luz, nós calculamos os cosseno da angulo alpha fazendo o produto escalar do vetor luz com o vetor negativo normalizado do eixo do foco. Caso o angulo alpha seja menor que o angulo da abertura do foco nós calculamos o fator the atenuação $f_{att}$. Se este não for o caso então o valor do fator de atenuação $f_{att}$ será $0,0$. O valor do fator de atenuação é dado pelo cosseno do angulo alpha com expoente de valor igual ao cutoff da luz.
+
+#+begin_src glsl
+float cos_alpha = dot(L, normalize(-light.axis));
+
+if (cos_alpha > cos(light.aperture)) 
+    attenuationFactor = pow(cos_alpha, light.cutoff);
+#+end_src
+
+* Implementação de mais do que 3 luzes
+No nosso caso, nós já implementamos maneiras de criar mais luzes para além das três já predefinidas. Para tal, recorremos a um array lights onde guardamos os objetos Light como foi referido na primeira secção.
+
+#+begin_src glsl
+let lights = [];
+#+end_src
+
+Sempre que nós desenhamos um frame chamamos a seguinte função:
+
+#+begin_src js
+function sendLights()
+{
+    for (let i = 0; i < lights.length; i++){
+	const uAmbient =
+	gl.getUniformLocation(program, "uLights[" + i + "].ambient");
+	const uDiffuse =
+	gl.getUniformLocation(program, "uLights[" + i + "].diffuse");
+	const uSpecular =
+	gl.getUniformLocation(program, "uLights[" + i + "].specular");
+	const uPosition =
+	gl.getUniformLocation(program, "uLights[" + i + "].position");
+	const uAxis =
+	gl.getUniformLocation(program, "uLights[" + i + "].axis");
+	const uAperture =
+	gl.getUniformLocation(program, "uLights[" + i + "].aperture");
+	const uCutoff =
+	gl.getUniformLocation(program, "uLights[" + i + "].cutoff");
+	const uOn =
+        gl.getUniformLocation(program, "uLights[" + i + "].on");
+
+	let light = lights[i];
+
+	gl.uniform3fv(uAmbient, light.intensities.ambient);
+	gl.uniform3fv(uDiffuse, light.intensities.diffuse);
+	gl.uniform3fv(uSpecular, light.intensities.specular);
+	gl.uniform4fv(uPosition, makeAttributeArray(light.position));
+	gl.uniform3fv(uAxis, makeAttributeArray(light.axis));
+	gl.uniform1f(uAperture, radians(light.aperture));
+	gl.uniform1f(uCutoff, light.cutoff);
+	gl.uniform1i(uOn, light.on);
+    }
+}  
+#+end_src
+
+Esta função envia a informação das luzes para os shaders. Como nós criamos luzes de vários tipos, tal como mencionamos na primeira secção, à medida que vamos criando luzes e elas são adicionadas ao array lights, essa informação será enviada aos shader para ser desenhada. Assim, conseguimos adicionar múltiplas luzes interativamente.
+
+* Implementação do Desafio
+
+Para implementar o desafio de controlar a posição da câmara usamos as seguintes duas variáveis:
+
+#+begin_src js
+let dragging = false;
+let mouseDrag = {x: 0, y: 0};
+#+end_src
+
+A primeira variável indica se o utilizador se encontra a arrastar a câmara e a segunda
+a quantidade de movimento que foi acumulado para fazer as rotações.
+
+Os seguintes eventos tratam da alteração das variáveis anteriormente mencionadas.
+
+#+begin_src js
+    canvas.addEventListener("mousedown", function(event) {
+        dragging = true;
+    });
+
+    canvas.addEventListener("mousemove", function(event) {
+        if(dragging){
+            mouseDrag.x += event.movementX;
+            mouseDrag.y += event.movementY;
+        }
+    });
+
+    canvas.addEventListener("mouseup", function(event) {
+        dragging = false;
+    })  
+#+end_src
+
+Quando o utilizador carrega no botão do lado esquerdo do rato, a variável dragging passa a ser verdadeira e os valores do mouseDrag passam a ser atualizado. Quando o utilizador larga o botão, dragging passa a ser falso e os valores do mouseDrag deixam de ser atualizados.
+
+Os valores do mouseDrag são usados para alterar a matriz view e assim alterar a visão da câmara através de rotações como podemos ver no seguinte código:
+
+#+begin_src  
+let mView = mult(lookAt(eye, at, up),
+                  mult(rotateX(mouseDrag.y),
+                       rotateY(mouseDrag.x)))
+loadMatrix(mView);
+#+end_src
+
