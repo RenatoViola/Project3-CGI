@@ -12,8 +12,6 @@ let gl;
 
 let mode;
 
-let mView;
-
 const VP_DISTANCE = 10;
 const MAX_LIGHTS = 8;
 
@@ -52,12 +50,23 @@ function setup(shaders)
     resize_canvas();
     window.addEventListener("resize", resize_canvas);
 
+    addLight(PontualLight());
+    addLight(DirectionalLight());
+    addLight(SpotLight());
+
     document.onkeydown = function(event) 
     {
         switch(event.key) {
-            case ' ':
-                if (lights.length < MAX_LIGHTS)
-                    addLight();
+            case 'g':
+                addLight(PontualLight());
+                break;
+            case 'h':
+                addLight(DirectionalLight());
+                break;
+            case 'j':
+                addLight(SpotLight());
+                break;
+            default:
                 break;
         }
     }
@@ -107,25 +116,10 @@ function setup(shaders)
         gl.uniformMatrix4fv(location, false, flatten(uMNormals));
     }
 
-    function upload_mViewNormals()
-    {
-        const location = gl.getUniformLocation(program, "mViewNormals");
-        let uMViewNormals = inverse(transpose(mView));
-        gl.uniformMatrix4fv(location, false, flatten(uMViewNormals));
-    }
-
-    function upload_mView()
-    {
-        const location = gl.getUniformLocation(program, "mView");
-        gl.uniformMatrix4fv(location, false, flatten(mView));
-    }
-
     function uploadMatrixes()
     {
         uploadModelView();
         upload_mNormals();
-        upload_mViewNormals();
-        upload_mView();
     }
 
     function setupGUI()
@@ -142,6 +136,8 @@ function setup(shaders)
         setupMaterialsFolder();
     }
 
+    // Setup the folders in the GUI ________________________________________________________________________________________________________________
+
     function setupOptionsFolder()
     {
         optionController = {culling: true, zb: true};
@@ -150,22 +146,9 @@ function setup(shaders)
         optionsFolder.add(optionController, "zb").name("Depth test");
     }
 
-    function setHiddenFaceRemoval()
-    {
-        if (optionController.culling)   
-            gl.enable(gl.CULL_FACE);
-        else 
-            gl.disable(CULL_FACE);
-
-        if (optionController.zb)   
-            gl.enable(gl.DEPTH_TEST);
-        else 
-            gl.disable(gl.DEPTH_TEST);
-    }
-
     function setupProjectionFolder()
     {
-        projectionController = {fovy: 45, near: 0.1, far: 50};
+        projectionController = {fovy: 45, near: 0.1, far: 100};
         projectionFolder.add(projectionController, "fovy", 1, 180, 1);
         projectionFolder.add(projectionController, "near", 0.1, 50, 0.1);
         projectionFolder.add(projectionController, "far", 0.1, 100, 0.1);
@@ -187,25 +170,93 @@ function setup(shaders)
         setupXYZ(upFolder, upXYZ);
     }
 
-    function addLight(){
-        let light = new Light();
-        lights.push(light);
-        createLightFolder(light);
+    function createLightFolder(light){
+        const lightName = "Light " + lights.length;
+        let lightFolder = lightsFolder.addFolder(lightName);
+        lightFolder.add(light, "on");
+        let positionFolder = lightFolder.addFolder("position");
+        let intensitiesFolder = lightFolder.addFolder("intensities");
+        let axisFolder = lightFolder.addFolder("axis");
 
-        gl.useProgram(program);
-        const uNLights = gl.getUniformLocation(program, "uNLights");
-        gl.uniform1i(uNLights, lights.length);
+        setupXYZ(positionFolder, light.position);
+        positionFolder.add(light.position, "w");
+
+        intensitiesFolder.addColor(light.intensities, "ambient");
+        intensitiesFolder.addColor(light.intensities, "diffuse");
+        intensitiesFolder.addColor(light.intensities, "specular");
+
+        setupXYZ(axisFolder, light.axis);
+
+        lightFolder.add(light, "aperture", 0, 180, 0.5);
+        lightFolder.add(light, "cutoff", 0, 8, 0.1);
     }
 
-    function Light(){
-        this.position = {x: 0, y: 2, z: 0, w: 1};
-        this.intensities = {ambient: [50,50,50], diffuse: [60,60,60], specular: [200,200,200]};
-        this.axis = {x: 0, y: -2, z: 0};
-        this.aperture = 90;
-        this.cutoff = 0;
+    function setupMaterialsFolder()
+    {
+        materialsController = {Ka: [190,190,190], Kd: [220,185,185], Ks: [200,200,200], shininess: 10};
+
+        materialsFolder.addColor(materialsController, "Ka");
+        materialsFolder.addColor(materialsController, "Kd");
+        materialsFolder.addColor(materialsController, "Ks");
+        materialsFolder.add(materialsController, "shininess");
+    }
+
+
+    // Light related operations ______________________________________________________________________________________________________________________
+
+    //Adds a light to the scene
+    function addLight(light){
+        if (lights.length < MAX_LIGHTS){
+            lights.push(light);
+            createLightFolder(light);
+
+            gl.useProgram(program);
+            const uNLights = gl.getUniformLocation(program, "uNLights");
+            gl.uniform1i(uNLights, lights.length);
+        }
+    }
+
+    function SpotLight()
+    {
+        let position = {x: 0, y: 2, z: 0, w: 1};
+        let axis = {x: 5, y: -177, z: -607};
+        let aperture = 17;
+        let cutoff = 2;
+
+        return new Light(position, axis, aperture, cutoff);
+    }
+
+    function DirectionalLight()
+    {
+        let position = {x: -5, y: 7, z: 3, w: 0};
+        let axis = {x: 0, y: -2, z: 0};
+        let aperture = 180;
+        let cutoff = 0;
+
+        return new Light(position, axis, aperture, cutoff);
+    }
+
+    function PontualLight()
+    {
+        let position = {x: 0, y: 2, z: 0, w: 1};
+        let axis = {x: 0, y: -2, z: 0};
+        let aperture = 180;
+        let cutoff = 0;
+        
+        return new Light(position, axis, aperture, cutoff);
+    }
+
+    //Constructor function for a light
+    function Light(position, axis, aperture, cutoff){
+        this.position = position;
+        this.intensities = {ambient: [40,40,40], diffuse: [40,40,40], specular: [200,200,200]};
+        this.axis = axis;
+        this.aperture = aperture;
+        this.cutoff = cutoff;
         this.on = true;
     }
 
+    //Sends the lights to the shaders
     function sendLights()
     {
         for (let i = 0; i < lights.length; i++){
@@ -231,50 +282,21 @@ function setup(shaders)
         }
     }
 
-    function defineMaterialProperties(materialAmb, materialDif, materialSpe, shininess)
+    //Enables or disables backface culling or the depth test
+    function setHiddenFaceRemoval()
     {
-        const uMaterialAmb = gl.getUniformLocation(program, "uMaterial.Ka");
-        const uMaterialDif = gl.getUniformLocation(program, "uMaterial.Kd");
-        const uMaterialSpe = gl.getUniformLocation(program, "uMaterial.Ks");
-        const uShininess = gl.getUniformLocation(program, "uMaterial.shininess");
+        if (optionController.culling)   
+            gl.enable(gl.CULL_FACE);
+        else 
+            gl.disable(CULL_FACE);
 
-        gl.uniform3fv(uMaterialAmb, materialAmb);
-        gl.uniform3fv(uMaterialDif, materialDif);
-        gl.uniform3fv(uMaterialSpe, materialSpe);
-        gl.uniform1f(uShininess, shininess);
+        if (optionController.zb)   
+            gl.enable(gl.DEPTH_TEST);
+        else 
+            gl.disable(gl.DEPTH_TEST);
     }
 
-    function createLightFolder(light){
-        const lightName = "Light " + lights.length;
-        let lightFolder = lightsFolder.addFolder(lightName);
-        lightFolder.add(light, "on");
-        let positionFolder = lightFolder.addFolder("position");
-        let intensitiesFolder = lightFolder.addFolder("intensities");
-        let axisFolder = lightFolder.addFolder("axis");
-
-        setupXYZ(positionFolder, light.position);
-        positionFolder.add(light.position, "w");
-
-        intensitiesFolder.addColor(light.intensities, "ambient");
-        intensitiesFolder.addColor(light.intensities, "diffuse");
-        intensitiesFolder.addColor(light.intensities, "specular");
-
-        setupXYZ(axisFolder, light.axis);
-
-        lightFolder.add(light, "aperture", 0, 90, 1);
-        lightFolder.add(light, "cutoff", 0, 2, 0.1);
-    }
-
-    function setupMaterialsFolder()
-    {
-        materialsController = {Ka: [190,190,190], Kd: [220,185,185], Ks: [200,200,200], shininess: 10};
-
-        materialsFolder.addColor(materialsController, "Ka");
-        materialsFolder.addColor(materialsController, "Kd");
-        materialsFolder.addColor(materialsController, "Ks");
-        materialsFolder.add(materialsController, "shininess");
-    }
-
+    // A textbox for each X, Y, Z attribute
     function setupXYZ(folder, controller)
     {
         folder.add(controller, "x");
@@ -284,6 +306,7 @@ function setup(shaders)
 
     // BASIC OBJECTS ________________________________________________________
 
+    // Define the object's illumination properties
     function defineMaterialProperties(materialAmb, materialDif, materialSpe, shininess)
     {
         const uMaterialAmb = gl.getUniformLocation(program, "uMaterial.Ka");
@@ -359,7 +382,7 @@ function setup(shaders)
             Torus();
     }
 
-    //___________________________________________________________________________________
+    //Other functions___________________________________________________________________________________
     
     function render()
     {
@@ -388,7 +411,7 @@ function setup(shaders)
         let eye = makeAttributeArray(cameraController.eye);
         let at = makeAttributeArray(cameraController.at);
         let up = makeAttributeArray(cameraController.up);
-        mView = mult(lookAt(eye, at, up), mult(rotateX(mouseDrag.y), rotateY(mouseDrag.x)));      
+        let mView = mult(lookAt(eye, at, up), mult(rotateX(mouseDrag.y), rotateY(mouseDrag.x)));      
         loadMatrix(mView);
     }
 
@@ -398,10 +421,6 @@ function setup(shaders)
         for (const a in obj)
             array.push(obj[a]);
         return array;
-    }
-
-    function toRadians (angle) {
-	return angle * (Math.PI / 180);
     }
 
 }
