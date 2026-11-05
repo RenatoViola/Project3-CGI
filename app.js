@@ -365,7 +365,7 @@ function setup(shaders)
             Ground();
         popMatrix();
         pushMatrix();
-            multTranslation([2.5, 0, 2.5]);
+            multTranslation([2.5, 0.6, 2.5]);
             multScale([10,10,10]);
             Bunny();
         popMatrix();
