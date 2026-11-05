@@ -1,11 +1,11 @@
-import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import {lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose, radians} from "../../libs/MV.js";
-import {modelView, loadMatrix, multRotationX, multRotationY, multRotationZ, multScale, pushMatrix, popMatrix, multTranslation } from "../../libs/stack.js";
-import { GUI } from "../../libs/dat.gui.module.js";
-import * as CYLINDER from '../../libs/objects/cylinder.js';
-import * as CUBE from '../../libs/objects/cube.js';
-import * as TORUS from '../../libs/objects/torus.js';
-import * as BUNNY from '../../libs/objects/bunny.js';
+import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "./libs/utils.js";
+import {lookAt, flatten, inverse, mult, rotateX, rotateY, perspective, transpose, radians} from "./libs/MV.js";
+import {modelView, loadMatrix, multRotationX, multRotationY, multRotationZ, multScale, pushMatrix, popMatrix, multTranslation } from "./libs/stack.js";
+import { GUI } from "./libs/dat.gui.module.js";
+import * as CYLINDER from './libs/objects/cylinder.js';
+import * as CUBE from './libs/objects/cube.js';
+import * as TORUS from './libs/objects/torus.js';
+import * as BUNNY from './libs/objects/bunny.js';
 
 /** @type WebGLRenderingContext */
 let gl;
